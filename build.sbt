@@ -7,6 +7,7 @@ scalaVersion := "2.11.12"
 //retrieveManaged := true
 
 resolvers += "Local Maven" at Path.userHome.asFile.toURI.toURL + ".m2/repository"
+// sys.props += "packaging.type" -> "jar"
 
 // assembly
 mainClass in assembly := Some("Main")
