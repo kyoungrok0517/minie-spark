@@ -17,15 +17,15 @@ object Main {
 
   def main(args: Array[String]): Unit = {
     // Check arguments
-    if (args.length < 2) {
-      System.err.println("Usage: Main <data_path> <out_path>")
+    if (args.length < 3) {
+      System.err.println("Usage: Main <data_path> <out_path> <n_partitions>")
       System.exit(1)
     }
 
     // get args
     val data_path = args(0)
     val out_dir = args(1)
-//    val n_partitions = args(2).toInt
+    val n_partitions = args(2).toInt
     val now = Calendar.getInstance().getTime()
     val formatter = new SimpleDateFormat("yyyy-MM-dd_hh-mm-ss")
     val timestamp = formatter.format(now)
@@ -33,6 +33,7 @@ object Main {
 
     val spark = SparkSession
       .builder()
+      .master("local[6]")
       .appName("MinIE-Spark Processor")
       .getOrCreate()
 
@@ -50,32 +51,31 @@ object Main {
     println("Total count: " + totalCount.value)
 
     import spark.implicits._
-//    implicit val RecordEncoder = org.apache.spark.sql.Encoders.kryo[Record]
 
     // get (file, sentence) pairs
-    val rows = df.as[Record].filter(row => (!row.file.trim.isEmpty && !row.sentence.trim.isEmpty))
+    val rows = df.as[Record].filter(row => (!row.file.trim.isEmpty && !row.sentence.trim.isEmpty)).repartition(n_partitions)
 
     // Run
     val results = rows.mapPartitions(row => {
       // Initialize the parser and MinIE// Initialize the parser and MinIE
-      val parser: StanfordCoreNLP = CoreNLPUtils.StanfordDepNNParser
+      val parser: StanfordCoreNLP = CoreNLPUtils.StanfordDepNNParser()
       var sg: SemanticGraph = new SemanticGraph()
-      val filenames = Array[String]("/minie-resources/nyt-freq-rels-mw.txt", "/minie-resources/nyt-freq-args-mw.txt")
-      val dict = new Dictionary(filenames)
+//      val dictionaries = Array[String]("/minie-resources/nyt-freq-rels-mw.txt", "/minie-resources/nyt-freq-args-mw.txt")
+//      val dict = new Dictionary(dictionaries)
       val minie: MinIE = new MinIE()
 
       // Extract
-      val results = row.map(file_and_sent => {
+      val results_ = row.flatMap(file_and_sent => {
         val file = file_and_sent.file
         val sentence = file_and_sent.sentence
 
-        // process data// process data
+        // process data
         sg = CoreNLPUtils.parse(parser, sentence)
-//        minie.minimize(sentence, sg, MinIE.Mode.SAFE, null)
-        minie.minimize(sentence, sg, MinIE.Mode.DICTIONARY, dict)
+        minie.minimize(sentence, sg, MinIE.Mode.SAFE, null)
+//        minie.minimize(sentence, sg, MinIE.Mode.DICTIONARY, dict)
 
         // Do stuff with the triples// Do stuff with the triples
-        val props: ObjectArrayList[AnnotatedProposition] = minie.getPropositions
+        val props: ObjectArrayList[AnnotatedProposition] = minie.getPropositions.clone()
 
         // Clear the object for re-usability
         minie.clear
@@ -85,13 +85,14 @@ object Main {
           val subj: String = prop.getSubject.toString
           val rel: String = prop.getRelation.toString
           val obj: String = prop.getObject.toString
-          val result: String = String.format("%s\t%s\t%s\t%s", sentence, subj, rel, obj)
+          val result: String = f"$subj\t$rel\t$obj"
           (file, sentence, result)
         })
+
       })
 
       // return
-      results
+      results_
     })
 
     // Save
