@@ -13,6 +13,7 @@ import edu.stanford.nlp.semgraph.SemanticGraph
 import it.unimi.dsi.fastutil.objects.ObjectArrayList
 
 case class FeverClaim(id: BigInt, claim: String)
+case class FeverEvidence(id: BigInt, sentence: String, sid: Int)
 
 object Main {
 
@@ -55,7 +56,7 @@ object Main {
     import spark.implicits._
 
     // get (id, claim) pairs
-    val rows = df.as[FeverClaim].filter(row => (!row.claim.trim.isEmpty))
+    val rows = df.as[FeverEvidence].filter(row => (!row.claim.trim.isEmpty))
 
     // Run
     val results = rows.repartition(n_partitions).mapPartitions(row => {
@@ -69,12 +70,13 @@ object Main {
       // Extract
       val results_ = row.flatMap(r => {
         val id = r.id
-        val claim = r.claim
+        val sentence = r.sentence
+        val sid = r.sid
 
         // process data
-        sg = CoreNLPUtils.parse(parser, claim)
-//        minie.minimize(claim, sg, MinIE.Mode.SAFE, null)
-        minie.minimize(claim, sg, MinIE.Mode.DICTIONARY, dict)
+        sg = CoreNLPUtils.parse(parser, sentence)
+//        minie.minimize(sentence, sg, MinIE.Mode.SAFE, null)
+        minie.minimize(sentence, sg, MinIE.Mode.DICTIONARY, dict)
 
         // Do stuff with the triples// Do stuff with the triples
         val props: ObjectArrayList[AnnotatedProposition] = minie.getPropositions.clone()
@@ -94,7 +96,7 @@ object Main {
           // val attribution = Option(prop.getAttribution.toStringCompact).getOrElse("")
 
           val result: String = s"$subj\t$rel\t$obj\t$polarity\t$modality"
-          (id, claim, result)
+          (id, sentence, sid, result)
         })
 
       })
@@ -104,7 +106,7 @@ object Main {
     })
 
     // Save
-    val df_results = results.toDF("id", "claim", "result")
+    val df_results = results.toDF("id", "sentence", "sid", "result")
     df_results.write.option("compression", "snappy").parquet(out_path)
   }
 }
