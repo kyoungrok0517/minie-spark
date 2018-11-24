@@ -34,7 +34,7 @@ object Main {
 
     val spark = SparkSession
       .builder()
-//      .master("local[6]")
+      .master("local[6]")
       .appName("MinIE-Spark Processor")
       .getOrCreate()
 
@@ -89,8 +89,8 @@ object Main {
           val rel = Option(prop.getRelation).getOrElse("")
           val obj = Option(prop.getObject).getOrElse("")
           // annotations
-          val polarity = Option(prop.getPolarity).getOrElse("")
-          val modality = Option(prop.getModality).getOrElse("")
+          val polarity = Option(prop.getPolarity.getType).getOrElse("")
+          val modality = Option(prop.getModality.getModalityType).getOrElse("")
           // val attribution = Option(prop.getAttribution.toStringCompact).getOrElse("")
 
           val result: String = s"$subj\t$rel\t$obj\t$polarity\t$modality"
