@@ -70,12 +70,19 @@ object Main {
 
       // Extract
       val results_ = row.flatMap(r => {
+        val id = r.id
         val sentence = r.sentence
+        val sid = r.sid
 
         // process data
         sg = CoreNLPUtils.parse(parser, sentence)
-        minie.minimize(sentence, sg, MinIE.Mode.SAFE, null)
-        // minie.minimize(sentence, sg, MinIE.Mode.DICTIONARY, dict)
+
+        try {
+          minie.minimize(sentence, sg, MinIE.Mode.SAFE, null)
+          // minie.minimize(sentence, sg, MinIE.Mode.DICTIONARY, dict)
+        } catch {
+          case e: Exception => (id, sentence, sid, "")
+        }
 
         // Do stuff with the triples// Do stuff with the triples
         val props: ObjectArrayList[AnnotatedProposition] = minie.getPropositions.clone()
@@ -94,8 +101,6 @@ object Main {
           val modality = Option(prop.getModality.getModalityType).getOrElse("")
           // val attribution = Option(prop.getAttribution.toStringCompact).getOrElse("")
 
-          val id = r.id
-          val sid = r.sid
           val result: String = s"$subj\t$rel\t$obj\t$polarity\t$modality"
           (id, sentence, sid, result)
         })
