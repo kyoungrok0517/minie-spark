@@ -101,8 +101,8 @@ object Main {
           val modality = Option(prop.getModality.getModalityType).getOrElse("")
           // val attribution = Option(prop.getAttribution.toStringCompact).getOrElse("")
 
-          val result: String = s"$subj\t$rel\t$obj\t$polarity\t$modality"
-          (id, sentence, sid, result)
+          // val result: String = s"$subj\t$rel\t$obj\t$polarity\t$modality"
+          (id, sentence, sid, subj.toString, rel.toString, obj.toString, polarity.toString, modality.toString)
         })
 
       })
@@ -112,7 +112,7 @@ object Main {
     })
 
     // Save
-    val df_results = results.toDF("id", "sentence", "sid", "result")
+    val df_results = results.toDF("id", "sentence", "sid", "subj", "rel", "obj", "polarity", "modality")
     df_results.write.option("compression", "snappy").parquet(out_path)
   }
 }
