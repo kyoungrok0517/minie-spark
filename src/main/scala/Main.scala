@@ -12,7 +12,7 @@ import edu.stanford.nlp.pipeline.StanfordCoreNLP
 import edu.stanford.nlp.semgraph.SemanticGraph
 import it.unimi.dsi.fastutil.objects.ObjectArrayList
 
-case class DataRow(id: BigInt, claim: String)
+//case class DataRow(id: BigInt, claim: String)
 // case class DataRow(id: String, claim: String, sid: String)
 
 object Main {
@@ -28,26 +28,20 @@ object Main {
     val data_path = args(0)
     val out_dir = args(1)
     val n_partitions = args(2).toInt
-    // val n_workers = args(3).toInt
+     val n_workers = args(3).toInt
     val now = Calendar.getInstance().getTime()
-    val formatter = new SimpleDateFormat("yyyy-MM-dd_hh-mm-ss")
+    val formatter = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss")
     val timestamp = formatter.format(now)
     val out_path = s"$out_dir/$timestamp"
 
     val spark = SparkSession
       .builder()
-      // .master(s"local[$n_workers]")
+       .master(s"local[$n_workers]")
       .appName("MinIE-Spark Processor")
       .getOrCreate()
 
     val sc = spark.sparkContext
-    // val schema = types.StructType(
-    //   StructField("file", StringType, true) ::
-    //     StructField("sentence", StringType, true) :: Nil
-    // )
-    // val df = spark.read.schema(schema).parquet(data_path)
     val df = spark.read.parquet(data_path)
-    //    df.show()
 
     // 처리 시작
     val totalCount = sc.broadcast(df.count())
@@ -57,7 +51,7 @@ object Main {
     import spark.implicits._
 
     // get (id, claim) pairs
-    val rows = df.as[DataRow].filter(row => (!row.claim.trim.isEmpty))
+    val rows = df.filter(row => (!row(1).toString.trim.isEmpty))
 
     // Run
     val results = rows.repartition(n_partitions).mapPartitions(row => {
@@ -70,20 +64,21 @@ object Main {
 
       // Extract
       val results_ = row.flatMap(r => {
-        val id = r.id
-        val claim = r.claim
+        val id = r(0).toString
+        val line = r(1).toString
 
         // process data
-        sg = CoreNLPUtils.parse(parser, claim)
+        sg = CoreNLPUtils.parse(parser, line)
+        val empty_result = Seq("", "", "", "", "")
 
         try {
-          minie.minimize(claim, sg, MinIE.Mode.SAFE, null)
+          minie.minimize(line, sg, MinIE.Mode.SAFE, null)
           // minie.minimize(claim, sg, MinIE.Mode.DICTIONARY, dict)
         } catch {
-          case e: Exception => (id, claim, "", "", "", "", "")
+          case e: Exception => row.toSeq ++ empty_result
         }
 
-        // Do stuff with the triples// Do stuff with the triples
+        // Do stuff with the triples
         val props: ObjectArrayList[AnnotatedProposition] = minie.getPropositions.clone()
 
         // Clear the object for re-usability
@@ -101,7 +96,7 @@ object Main {
           // val attribution = Option(prop.getAttribution.toStringCompact).getOrElse("")
 
           // val result: String = s"$subj\t$rel\t$obj\t$polarity\t$modality"
-          (id, claim, subj.toString, rel.toString, obj.toString, polarity.toString, modality.toString)
+          row.toSeq ++ Seq(subj.toString, rel.toString, obj.toString, polarity.toString, modality.toString)
         })
 
       })
@@ -111,7 +106,7 @@ object Main {
     })
 
     // Save
-    val df_results = results.toDF("id", "claim", "subj", "rel", "obj", "polarity", "modality")
-    df_results.write.option("compression", "snappy").parquet(out_path)
+//    val df_results = results.toDF("id", "claim", "subj", "rel", "obj", "polarity", "modality")
+    results.write.option("compression", "snappy").parquet(out_path)
   }
 }
