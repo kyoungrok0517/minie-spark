@@ -74,7 +74,7 @@ object Main {
         val claim = r.claim
 
         // empty return variable
-        val empty_result = List() :+ (id, claim, "", "", "", "", "")
+        val empty_result = (List() :+ (id, claim, "", "", "", "", ""))
 
         // process data
         sg = CoreNLPUtils.parse(parser, claim)
@@ -93,7 +93,7 @@ object Main {
         minie.clear
 
         // return
-        if (props.size() == 0) {
+        if (props.elements().size == 0) {
           empty_result
         } else {
           props.elements().map(prop => {
