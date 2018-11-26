@@ -12,8 +12,8 @@ import edu.stanford.nlp.pipeline.StanfordCoreNLP
 import edu.stanford.nlp.semgraph.SemanticGraph
 import it.unimi.dsi.fastutil.objects.ObjectArrayList
 
-case class DataRow(id: BigInt, claim: String)
-// case class DataRow(id: String, claim: String, sid: String)
+case class DataRow(id: BigInt, line: String, type: String)
+// case class DataRow(id: String, line: String, sid: String)
 
 object Main {
 
@@ -57,7 +57,7 @@ object Main {
     import spark.implicits._
 
     // get (id, claim) pairs
-    val rows = df.as[DataRow].filter(row => (!row.claim.trim.isEmpty))
+    val rows = df.as[DataRow].filter(row => (!row.line.trim.isEmpty))
 
     // Run
     val results = rows.repartition(n_partitions).mapPartitions(row => {
@@ -71,16 +71,17 @@ object Main {
       // Extract
       val results_ = row.flatMap(r => {
         val id = r.id
-        val claim = r.claim
+        val line = r.line
+        val type = r.type
 
         // process data
-        sg = CoreNLPUtils.parse(parser, claim)
+        sg = CoreNLPUtils.parse(parser, line)
 
         try {
-          minie.minimize(claim, sg, MinIE.Mode.SAFE, null)
-          // minie.minimize(claim, sg, MinIE.Mode.DICTIONARY, dict)
+          minie.minimize(line, sg, MinIE.Mode.SAFE, null)
+          // minie.minimize(line, sg, MinIE.Mode.DICTIONARY, dict)
         } catch {
-          case e: Exception => (id, claim, "", "", "", "", "")
+          case e: Exception => (id, line, sid, "", "", "", "", "")
         }
 
         // Do stuff with the triples// Do stuff with the triples
@@ -101,7 +102,7 @@ object Main {
           // val attribution = Option(prop.getAttribution.toStringCompact).getOrElse("")
 
           // val result: String = s"$subj\t$rel\t$obj\t$polarity\t$modality"
-          (id, claim, subj.toString, rel.toString, obj.toString, polarity.toString, modality.toString)
+          (id, line, type, subj.toString, rel.toString, obj.toString, polarity.toString, modality.toString)
         })
 
       })
@@ -111,7 +112,7 @@ object Main {
     })
 
     // Save
-    val df_results = results.toDF("id", "claim", "subj", "rel", "obj", "polarity", "modality")
+    val df_results = results.toDF("id", "line", "type", "subj", "rel", "obj", "polarity", "modality")
     df_results.write.option("compression", "snappy").parquet(out_path)
   }
 }
