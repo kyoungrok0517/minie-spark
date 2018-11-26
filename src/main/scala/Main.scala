@@ -12,7 +12,8 @@ import edu.stanford.nlp.pipeline.StanfordCoreNLP
 import edu.stanford.nlp.semgraph.SemanticGraph
 import it.unimi.dsi.fastutil.objects.ObjectArrayList
 
-case class FeverClaim(id: BigInt, claim: String)
+case class DataRow(id: BigInt, line: String, type: String)
+// case class DataRow(id: String, line: String, sid: String)
 
 object Main {
 
@@ -27,6 +28,7 @@ object Main {
     val data_path = args(0)
     val out_dir = args(1)
     val n_partitions = args(2).toInt
+    // val n_workers = args(3).toInt
     val now = Calendar.getInstance().getTime()
     val formatter = new SimpleDateFormat("yyyy-MM-dd_hh-mm-ss")
     val timestamp = formatter.format(now)
@@ -34,7 +36,7 @@ object Main {
 
     val spark = SparkSession
       .builder()
-//      .master("local[6]")
+      // .master(s"local[$n_workers]")
       .appName("MinIE-Spark Processor")
       .getOrCreate()
 
@@ -55,26 +57,32 @@ object Main {
     import spark.implicits._
 
     // get (id, claim) pairs
-    val rows = df.as[FeverClaim].filter(row => (!row.claim.trim.isEmpty))
+    val rows = df.as[DataRow].filter(row => (!row.line.trim.isEmpty))
 
     // Run
     val results = rows.repartition(n_partitions).mapPartitions(row => {
       // Initialize the parser and MinIE// Initialize the parser and MinIE
       val parser: StanfordCoreNLP = CoreNLPUtils.StanfordDepNNParser()
       var sg: SemanticGraph = new SemanticGraph()
-      val dictionaries = Array[String]("/minie-resources/wiki-freq-rels-mw.txt", "/minie-resources/wiki-freq-args-mw.txt")
-      val dict = new Dictionary(dictionaries)
+      // val dictionaries = Array[String]("/minie-resources/wiki-freq-rels-mw.txt", "/minie-resources/wiki-freq-args-mw.txt")
+      // val dict = new Dictionary(dictionaries)
       val minie: MinIE = new MinIE()
 
       // Extract
       val results_ = row.flatMap(r => {
         val id = r.id
-        val claim = r.claim
+        val line = r.line
+        val type = r.type
 
         // process data
-        sg = CoreNLPUtils.parse(parser, claim)
-//        minie.minimize(claim, sg, MinIE.Mode.SAFE, null)
-        minie.minimize(claim, sg, MinIE.Mode.DICTIONARY, dict)
+        sg = CoreNLPUtils.parse(parser, line)
+
+        try {
+          minie.minimize(line, sg, MinIE.Mode.SAFE, null)
+          // minie.minimize(line, sg, MinIE.Mode.DICTIONARY, dict)
+        } catch {
+          case e: Exception => (id, line, sid, "", "", "", "", "")
+        }
 
         // Do stuff with the triples// Do stuff with the triples
         val props: ObjectArrayList[AnnotatedProposition] = minie.getPropositions.clone()
@@ -93,8 +101,8 @@ object Main {
           val modality = Option(prop.getModality.getModalityType).getOrElse("")
           // val attribution = Option(prop.getAttribution.toStringCompact).getOrElse("")
 
-          val result: String = s"$subj\t$rel\t$obj\t$polarity\t$modality"
-          (id, claim, result)
+          // val result: String = s"$subj\t$rel\t$obj\t$polarity\t$modality"
+          (id, line, type, subj.toString, rel.toString, obj.toString, polarity.toString, modality.toString)
         })
 
       })
@@ -104,7 +112,7 @@ object Main {
     })
 
     // Save
-    val df_results = results.toDF("id", "claim", "result")
+    val df_results = results.toDF("id", "line", "type", "subj", "rel", "obj", "polarity", "modality")
     df_results.write.option("compression", "snappy").parquet(out_path)
   }
 }
