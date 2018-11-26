@@ -73,6 +73,9 @@ object Main {
         val id = r.id
         val claim = r.claim
 
+        // empty return variable
+        val empty_result = List() :+ (id, claim, "", "", "", "", "")
+
         // process data
         sg = CoreNLPUtils.parse(parser, claim)
 
@@ -80,7 +83,7 @@ object Main {
           minie.minimize(claim, sg, MinIE.Mode.SAFE, null)
           // minie.minimize(claim, sg, MinIE.Mode.DICTIONARY, dict)
         } catch {
-          case e: Exception => (id, claim, "", "", "", "", "")
+          case e: Exception => empty_result
         }
 
         // Do stuff with the triples// Do stuff with the triples
@@ -90,20 +93,23 @@ object Main {
         minie.clear
 
         // return
-        props.elements().map(prop => {
-          // triple
-          val subj = Option(prop.getSubject).getOrElse("")
-          val rel = Option(prop.getRelation).getOrElse("")
-          val obj = Option(prop.getObject).getOrElse("")
-          // annotations
-          val polarity = Option(prop.getPolarity.getType).getOrElse("")
-          val modality = Option(prop.getModality.getModalityType).getOrElse("")
-          // val attribution = Option(prop.getAttribution.toStringCompact).getOrElse("")
+        if (props.size() == 0) {
+          empty_result
+        } else {
+          props.elements().map(prop => {
+            // triple
+            val subj = Option(prop.getSubject).getOrElse("")
+            val rel = Option(prop.getRelation).getOrElse("")
+            val obj = Option(prop.getObject).getOrElse("")
+            // annotations
+            val polarity = Option(prop.getPolarity.getType).getOrElse("")
+            val modality = Option(prop.getModality.getModalityType).getOrElse("")
+            // val attribution = Option(prop.getAttribution.toStringCompact).getOrElse("")
 
-          // val result: String = s"$subj\t$rel\t$obj\t$polarity\t$modality"
-          (id, claim, subj.toString, rel.toString, obj.toString, polarity.toString, modality.toString)
-        })
-
+            // val result: String = s"$subj\t$rel\t$obj\t$polarity\t$modality"
+            (id, claim, subj.toString, rel.toString, obj.toString, polarity.toString, modality.toString)
+          })
+        }
       })
 
       // return
