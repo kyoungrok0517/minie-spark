@@ -81,7 +81,7 @@ object Main {
           minie.minimize(sentence, sg, MinIE.Mode.SAFE, null)
           // minie.minimize(sentence, sg, MinIE.Mode.DICTIONARY, dict)
         } catch {
-          case e: Exception => (id, sentence, sid, "")
+          case e: Exception => (id, sentence, sid, "", "", "", "", "")
         }
 
         // Do stuff with the triples// Do stuff with the triples
