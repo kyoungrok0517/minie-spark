@@ -5,15 +5,12 @@ import de.uni_mannheim.minie.MinIE
 import de.uni_mannheim.minie.annotation.AnnotatedProposition
 import de.uni_mannheim.utils.coreNLP.CoreNLPUtils
 import de.uni_mannheim.utils.Dictionary
-import de.uni_mannheim.minie.annotation.Polarity;
+import de.uni_mannheim.minie.annotation.Polarity
 import org.apache.spark.sql.types.{StringType, StructField}
-import org.apache.spark.sql.{SparkSession, types}
+import org.apache.spark.sql.{Row, SparkSession, types}
 import edu.stanford.nlp.pipeline.StanfordCoreNLP
 import edu.stanford.nlp.semgraph.SemanticGraph
 import it.unimi.dsi.fastutil.objects.ObjectArrayList
-
-//case class DataRow(id: BigInt, claim: String)
-// case class DataRow(id: String, claim: String, sid: String)
 
 object Main {
 
@@ -28,9 +25,9 @@ object Main {
     val data_path = args(0)
     val out_dir = args(1)
     val n_partitions = args(2).toInt
-     val n_workers = args(3).toInt
+    val n_workers = args(3).toInt
     val now = Calendar.getInstance().getTime()
-    val formatter = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss")
+    val formatter = new SimpleDateFormat("yyyy-MM-dd_hh-mm-ss")
     val timestamp = formatter.format(now)
     val out_path = s"$out_dir/$timestamp"
 
@@ -41,17 +38,15 @@ object Main {
       .getOrCreate()
 
     val sc = spark.sparkContext
-    val df = spark.read.parquet(data_path)
-
-    // 처리 시작
-    val totalCount = sc.broadcast(df.count())
-
-    println("Total count: " + totalCount.value)
 
     import spark.implicits._
 
-    // get (id, claim) pairs
-    val rows = df.filter(row => (!row(1).toString.trim.isEmpty))
+    // 처리 시작
+    val df = spark.read.parquet(data_path).toDF()
+    val rows = df.filter(row => !row(1).toString.trim.isEmpty)
+
+    val totalCount = sc.broadcast(df.count())
+    println("Total count: " + totalCount.value)
 
     // Run
     val results = rows.repartition(n_partitions).mapPartitions(row => {
@@ -64,21 +59,21 @@ object Main {
 
       // Extract
       val results_ = row.flatMap(r => {
-        val id = r(0).toString
-        val line = r(1).toString
+        val id: String = r(0).toString
+        val sentence: String = r(1).toString
+        val sid: String = r(2).toString
 
         // process data
-        sg = CoreNLPUtils.parse(parser, line)
-        val empty_result = Seq("", "", "", "", "")
-
         try {
-          minie.minimize(line, sg, MinIE.Mode.SAFE, null)
+          sg = CoreNLPUtils.parse(parser, sentence)
+          minie.minimize(sentence, sg, MinIE.Mode.SAFE, null)
           // minie.minimize(claim, sg, MinIE.Mode.DICTIONARY, dict)
         } catch {
-          case e: Exception => row.toSeq ++ empty_result
+          case e: Exception =>
+            (id, sentence, sid, "", "", "", "", "")
         }
 
-        // Do stuff with the triples
+        // Do stuff with the triples// Do stuff with the triples
         val props: ObjectArrayList[AnnotatedProposition] = minie.getPropositions.clone()
 
         // Clear the object for re-usability
@@ -96,7 +91,7 @@ object Main {
           // val attribution = Option(prop.getAttribution.toStringCompact).getOrElse("")
 
           // val result: String = s"$subj\t$rel\t$obj\t$polarity\t$modality"
-          row.toSeq ++ Seq(subj.toString, rel.toString, obj.toString, polarity.toString, modality.toString)
+          (id, sentence, sid, subj.toString, rel.toString, obj.toString, polarity.toString, modality.toString)
         })
 
       })
@@ -106,7 +101,6 @@ object Main {
     })
 
     // Save
-//    val df_results = results.toDF("id", "claim", "subj", "rel", "obj", "polarity", "modality")
-    results.write.option("compression", "snappy").parquet(out_path)
+    results.toDF("id", "line", "sid", "subj", "rel", "obj", "polarity", "modality").write.option("compression", "snappy").parquet(out_path)
   }
 }
