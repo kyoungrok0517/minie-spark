@@ -33,7 +33,7 @@ object Main {
 
     val spark = SparkSession
       .builder()
-      .master(s"local[6]")
+      // .master(s"local[6]")
       .appName("MinIE-Spark Processor")
       .getOrCreate()
 
