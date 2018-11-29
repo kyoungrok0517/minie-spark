@@ -25,7 +25,7 @@ object Main {
     val data_path = args(0)
     val out_dir = args(1)
     val n_partitions = args(2).toInt
-    val n_workers = args(3).toInt
+    //    val n_workers = args(3).toInt
     val now = Calendar.getInstance().getTime()
     val formatter = new SimpleDateFormat("yyyy-MM-dd_hh-mm-ss")
     val timestamp = formatter.format(now)
@@ -33,7 +33,7 @@ object Main {
 
     val spark = SparkSession
       .builder()
-       .master(s"local[$n_workers]")
+      .master(s"local[6]")
       .appName("MinIE-Spark Processor")
       .getOrCreate()
 
@@ -53,8 +53,8 @@ object Main {
       // Initialize the parser and MinIE// Initialize the parser and MinIE
       val parser: StanfordCoreNLP = CoreNLPUtils.StanfordDepNNParser()
       var sg: SemanticGraph = new SemanticGraph()
-      // val dictionaries = Array[String]("/minie-resources/wiki-freq-rels-mw.txt", "/minie-resources/wiki-freq-args-mw.txt")
-      // val dict = new Dictionary(dictionaries)
+      //      val dictionaries = Array[String]("/minie-resources/wiki-freq-rels-mw.txt", "/minie-resources/wiki-freq-args-mw.txt")
+      //      val dict = new Dictionary(dictionaries)
       val minie: MinIE = new MinIE()
 
       // Extract
@@ -67,10 +67,10 @@ object Main {
         try {
           sg = CoreNLPUtils.parse(parser, sentence)
           minie.minimize(sentence, sg, MinIE.Mode.SAFE, null)
-          // minie.minimize(claim, sg, MinIE.Mode.DICTIONARY, dict)
+          //          minie.minimize(sentence, sg, MinIE.Mode.DICTIONARY, dict)
         } catch {
           case e: Exception =>
-            (id, sentence, sid, "", "", "", "", "")
+            (id, sentence, sid, "")
         }
 
         // Do stuff with the triples// Do stuff with the triples
@@ -90,8 +90,8 @@ object Main {
           val modality = Option(prop.getModality.getModalityType).getOrElse("")
           // val attribution = Option(prop.getAttribution.toStringCompact).getOrElse("")
 
-          // val result: String = s"$subj\t$rel\t$obj\t$polarity\t$modality"
-          (id, sentence, sid, subj.toString, rel.toString, obj.toString, polarity.toString, modality.toString)
+          val triple: String = s"$subj\t$rel\t$obj\t$polarity\t$modality"
+          (id, sentence, sid, triple)
         })
 
       })
@@ -101,6 +101,6 @@ object Main {
     })
 
     // Save
-    results.toDF("id", "line", "sid", "subj", "rel", "obj", "polarity", "modality").write.option("compression", "snappy").parquet(out_path)
+    results.toDF("id", "line", "sid", "triple").write.option("compression", "snappy").parquet(out_path)
   }
 }
