@@ -33,7 +33,7 @@ object Main {
 
     val spark = SparkSession
       .builder()
-      // .master(s"local[6]")
+      .master(s"local[*]")
       .appName("MinIE-Spark Processor")
       .getOrCreate()
 
@@ -66,7 +66,7 @@ object Main {
         // process data
         try {
           sg = CoreNLPUtils.parse(parser, sentence)
-          minie.minimize(sentence, sg, MinIE.Mode.COMPLETE, null)
+          minie.minimize(sentence, sg, MinIE.Mode.SAFE, null)
           //          minie.minimize(sentence, sg, MinIE.Mode.DICTIONARY, dict)
         } catch {
           case e: Exception =>
@@ -85,12 +85,16 @@ object Main {
           val subj = Option(prop.getSubject).getOrElse("")
           val rel = Option(prop.getRelation).getOrElse("")
           val obj = Option(prop.getObject).getOrElse("")
+
           // annotations
           val polarity = Option(prop.getPolarity.getType).getOrElse("")
           val modality = Option(prop.getModality.getModalityType).getOrElse("")
-          // val attribution = Option(prop.getAttribution.toStringCompact).getOrElse("")
+          val quantity = prop.getAllQuantities.elements()
+            .filter(q => {
+              !Option(q).isEmpty
+            }).map(q => q.toString)
 
-          val triple: String = s"$subj\t$rel\t$obj\t$polarity\t$modality"
+          val triple: String = s"$subj\t$rel\t$obj\t$polarity\t$modality\t$quantity"
           (id, sentence, sid, triple)
         })
 
