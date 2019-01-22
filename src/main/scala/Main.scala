@@ -66,7 +66,7 @@ object Main {
         // process data
         try {
           sg = CoreNLPUtils.parse(parser, sentence)
-          minie.minimize(sentence, sg, MinIE.Mode.SAFE, null)
+          minie.minimize(sentence, sg, MinIE.Mode.COMPLETE, null)
           //          minie.minimize(sentence, sg, MinIE.Mode.DICTIONARY, dict)
         } catch {
           case e: Exception =>
