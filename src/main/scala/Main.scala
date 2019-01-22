@@ -33,7 +33,7 @@ object Main {
 
     val spark = SparkSession
       .builder()
-      // .master(s"local[6]")
+      .master(s"local[*]")
       .appName("MinIE-Spark Processor")
       .getOrCreate()
 
@@ -85,13 +85,14 @@ object Main {
           val subj = Option(prop.getSubject).getOrElse("")
           val rel = Option(prop.getRelation).getOrElse("")
           val obj = Option(prop.getObject).getOrElse("")
+
           // annotations
           val polarity = Option(prop.getPolarity.getType).getOrElse("")
           val modality = Option(prop.getModality.getModalityType).getOrElse("")
-          // val attribution = Option(prop.getAttribution.toStringCompact).getOrElse("")
+          val quantity = prop.getAllQuantities.elements().map(q => q.toString).mkString("|")
 
           val triple: String = s"$subj\t$rel\t$obj\t$polarity\t$modality"
-          (id, sentence, sid, triple)
+          (id, sentence, sid, triple, quantity)
         })
 
       })
@@ -101,6 +102,6 @@ object Main {
     })
 
     // Save
-    results.toDF("id", "line", "sid", "triple").write.option("compression", "snappy").parquet(out_path)
+    results.toDF("id", "line", "sid", "triple", "quantity").write.option("compression", "snappy").parquet(out_path)
   }
 }
