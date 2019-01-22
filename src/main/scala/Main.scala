@@ -92,7 +92,7 @@ object Main {
           val quantity = prop.getAllQuantities.elements()
             .filter(q => {
               !Option(q).isEmpty
-            }).map(q => q.toString)
+            }).map(q => q.toString).mkString("|")
 
           val triple: String = s"$subj\t$rel\t$obj\t$polarity\t$modality\t$quantity"
           (id, sentence, sid, triple)
