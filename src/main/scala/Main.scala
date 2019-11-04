@@ -117,7 +117,6 @@ object Main {
 
               val triple: String =
                 s"$subj\t$rel\t$obj\t$polarity\t$modality\t$quantity"
-              println(quantity)
               (
                 file,
                 collection,
