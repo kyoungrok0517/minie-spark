@@ -97,14 +97,15 @@ object Main {
             .elements()
             .map(prop => {
               // triple
-              val subj = Option(prop.getSubject).getOrElse("")
-              val rel = Option(prop.getRelation).getOrElse("")
-              val obj = Option(prop.getObject).getOrElse("")
+              val subj = Option(prop.getSubject).getOrElse("").toString
+              val rel = Option(prop.getRelation).getOrElse("").toString
+              val obj = Option(prop.getObject).getOrElse("").toString
 
               // annotations
-              val polarity = Option(prop.getPolarity.getType).getOrElse("")
+              val polarity =
+                Option(prop.getPolarity.getType).getOrElse("").toString
               val modality =
-                Option(prop.getModality.getModalityType).getOrElse("")
+                Option(prop.getModality.getModalityType).getOrElse("").toString
               val quantity = prop.getAllQuantities
                 .elements()
                 .filter(q => {
@@ -112,9 +113,11 @@ object Main {
                 })
                 .map(q => q.toString)
                 .mkString("|")
+                .toString
 
               val triple: String =
                 s"$subj\t$rel\t$obj\t$polarity\t$modality\t$quantity"
+              println(quantity)
               (
                 file,
                 collection,
