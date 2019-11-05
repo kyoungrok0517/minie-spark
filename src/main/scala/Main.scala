@@ -97,26 +97,25 @@ object Main {
             .elements()
             .map(prop => {
               // triple
-              val subj = Option(prop.getSubject).getOrElse("").toString
-              val rel = Option(prop.getRelation).getOrElse("").toString
-              val obj = Option(prop.getObject).getOrElse("").toString
+              val subj: String = Option(prop.getSubject).getOrElse("").toString
+              val rel: String = Option(prop.getRelation).getOrElse("").toString
+              val obj: String = Option(prop.getObject).getOrElse("").toString
 
               // annotations
-              val polarity =
+              val polarity: String =
                 Option(prop.getPolarity.getType).getOrElse("").toString
-              val modality =
+              val modality: String =
                 Option(prop.getModality.getModalityType).getOrElse("").toString
-              val quantity = prop.getAllQuantities
+              val quantity: String = prop.getAllQuantities
                 .elements()
                 .filter(q => {
                   !Option(q).isEmpty
                 })
                 .map(q => q.toString)
                 .mkString("|")
-                .toString
 
-              val triple: String =
-                s"$subj\t$rel\t$obj\t$polarity\t$modality\t$quantity"
+              // val triple: String =
+              //   s"$subj\t$rel\t$obj\t$polarity\t$modality\t$quantity"
               (
                 file,
                 collection,
